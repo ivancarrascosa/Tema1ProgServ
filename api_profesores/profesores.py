@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -29,7 +29,10 @@ profesores_list = [
 def buscar_profesor_ID(id_profesor: int):
     users = [i for i in profesores_list if i.id == id_profesor]
 
-    return users[0] if len(users) != 0 else {"error" : "user not found"}
+    if len(users) != 0:
+        return users[0]
+    else:
+        raise HTTPException(status_code=404, detail="Profesor not found")
 
 @app.get("/profesores")
 def profesores():
