@@ -45,3 +45,29 @@ def get_profesor_ID(id_profesor: int):
 @app.get("/profesores/")
 def get_profesor_query(id: int):
     return buscar_profesor_ID(id)
+
+@app.post("/profesores", status_code=201, response_model= Profesor)
+def post_profesor(profesor: Profesor):
+    profesor.id = next_id()
+    profesores_list.append(profesor)
+    return profesor
+
+@app.put("/profesores/{id}", response_model = Profesor)
+def modify_profesor(id: int, profesor: Profesor):
+    for index, saved_profesor in enumerate(profesores_list):
+        if saved_profesor.id == id:
+            profesor.id = id 
+            profesores_list[index] = profesor
+            return profesor
+    raise HTTPException(status_code=404, detail="User not found")
+
+@app.delete("/profesores/{id}")
+def delete_profesor(id: int):
+    for profesor in profesores_list:
+        if profesor.id == id:
+            profesores_list.remove(profesor)
+            return {}
+    raise HTTPException(status_code=404, detail="user not found")
+
+def next_id():
+    return max(profesores_list, key = lambda profesor: profesor.id).id + 1
