@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import HTTPException, APIRouter
 from pydantic import BaseModel
 
-app = FastAPI()
+router = APIRouter(prefix= "/asignaturas", tags=["asignaturas"])
 
 class Asignatura(BaseModel):
     id: int
@@ -36,25 +36,25 @@ def buscar_asignatura_id(id_asignatura: int):
 
 def next_id():
     return max(asignaturas_list, key = lambda asignatura: asignatura.id).id + 1
-@app.get("/asignaturas")
+@router.get("/")
 def get_asignaturas():
     return asignaturas_list
 
-@app.get("/asignaturas/{id_asignatura}")
+@router.get("/{id_asignatura}")
 def get_asignatura_id(id_asignatura: int):
     return buscar_asignatura_id(id_asignatura)
 
-@app.get("/asignaturas/")
+@router.get("/")
 def get_asignatura_query(id: int):
     return buscar_asignatura_id(id)
 
-@app.post("/asignaturas",status_code=201, response_model=Asignatura)
+@router.post("/",status_code=201, response_model=Asignatura)
 def post_asignatura(asignatura: Asignatura):
     asignatura.id = next_id()
     asignaturas_list.append(asignatura)
     return asignatura
 
-@app.put("/asignaturas/{id_asignatura}", response_model=Asignatura)
+@router.put("/{id_asignatura}", response_model=Asignatura)
 def modify_asignatura(id_asignatura: int, asignatura: Asignatura):
     for index, saved_asignatura in enumerate(asignaturas_list):
         if saved_asignatura.id == id_asignatura:
@@ -63,7 +63,7 @@ def modify_asignatura(id_asignatura: int, asignatura: Asignatura):
             return asignatura
     raise HTTPException(status_code=404, detail="Asignatura not found")
 
-@app.delete("/asignaturas/{id}")
+@router.delete("/{id}")
 def delete_asignatura(id: int):
     for asignatura in asignaturas_list:
         if asignatura.id == id:

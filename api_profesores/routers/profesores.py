@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI()
+router = APIRouter(prefix="/profesores", tags=["profesores"])
 
 # Entidad usuario
 class Profesor(BaseModel):
@@ -34,25 +34,25 @@ def buscar_profesor_ID(id_profesor: int):
     else:
         raise HTTPException(status_code=404, detail="Profesor not found")
 
-@app.get("/profesores")
+@router.get("/")
 def profesores():
     return profesores_list
 
-@app.get("/profesores/{id_profesor}")
+@router.get("/{id_profesor}")
 def get_profesor_ID(id_profesor: int):
     return buscar_profesor_ID(id_profesor)
 
-@app.get("/profesores/")
+@router.get("/")
 def get_profesor_query(id: int):
     return buscar_profesor_ID(id)
 
-@app.post("/profesores", status_code=201, response_model= Profesor)
+@router.post("/", status_code=201, response_model= Profesor)
 def post_profesor(profesor: Profesor):
     profesor.id = next_id()
     profesores_list.append(profesor)
     return profesor
 
-@app.put("/profesores/{id}", response_model = Profesor)
+@router.put("/{id}", response_model = Profesor)
 def modify_profesor(id: int, profesor: Profesor):
     for index, saved_profesor in enumerate(profesores_list):
         if saved_profesor.id == id:
@@ -61,7 +61,7 @@ def modify_profesor(id: int, profesor: Profesor):
             return profesor
     raise HTTPException(status_code=404, detail="User not found")
 
-@app.delete("/profesores/{id}")
+@router.delete("/{id}")
 def delete_profesor(id: int):
     for profesor in profesores_list:
         if profesor.id == id:
