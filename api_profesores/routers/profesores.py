@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from .asignaturas import buscar_asignatura_id_profesor
+
 router = APIRouter(prefix="/profesores", tags=["profesores"])
 
 # Entidad usuario
@@ -27,10 +29,10 @@ profesores_list = [
     ]
 
 def buscar_profesor_ID(id_profesor: int):
-    users = [i for i in profesores_list if i.id == id_profesor]
+    profesores = [i for i in profesores_list if i.id == id_profesor]
 
-    if len(users) != 0:
-        return users[0]
+    if len(profesores) != 0:
+        return profesores[0]
     else:
         raise HTTPException(status_code=404, detail="Profesor not found")
 
@@ -45,6 +47,18 @@ def get_profesor_ID(id_profesor: int):
 @router.get("/")
 def get_profesor_query(id: int):
     return buscar_profesor_ID(id)
+
+@router.get("/{id}/asignaturas")
+def get_asignaturas(id: int):
+    profesor = buscar_profesor_ID(id)
+    #Si existe el profesor
+    if (profesor):
+        #buscamos que tenga asignatura
+        asignaturas = buscar_asignatura_id_profesor(id)
+        if len(asignaturas) != 0:
+            return asignaturas
+        raise HTTPException(status_code=404, detail="No existen asignaturas con ese profesor")
+    raise HTTPException(status_code=404, detail="No existe el profesor")
 
 @router.post("/", status_code=201, response_model= Profesor)
 def post_profesor(profesor: Profesor):

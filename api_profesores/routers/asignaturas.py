@@ -34,6 +34,9 @@ def buscar_asignatura_id(id_asignatura: int):
     else:
         raise HTTPException(status_code=404, detail="Asignatura no encontrada")
 
+
+def buscar_asignatura_id_profesor(id_profesor: int):
+    return [asignatura for asignatura in asignaturas_list if asignatura.id_profesor == id_profesor]
 def next_id():
     return max(asignaturas_list, key = lambda asignatura: asignatura.id).id + 1
 @router.get("/")
