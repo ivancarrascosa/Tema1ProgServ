@@ -44,7 +44,7 @@ def profesores():
 def get_profesor_ID(id_profesor: int):
     return buscar_profesor_ID(id_profesor)
 
-@router.get("/")
+@router.get("")
 def get_profesor_query(id: int):
     return buscar_profesor_ID(id)
 
