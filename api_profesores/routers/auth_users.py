@@ -1,3 +1,4 @@
+from datetime import *
 from fastapi import APIRouter, Depends, HTTPException
 import fastapi
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -55,7 +56,7 @@ users_db = {
     "full_name": "Yoops",
     "email": "ivan.carrascosa@iesnervion.es",
     "disabled": False,
-    "password": "$argon2id$v=19$m=65536,t=3,p=4$m780unecJIrwbNWu5dRpSQ$mYsAsNNeDfxp8ypsVNubHqKiq86xP3H1ZhpiDuK91LQ"
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$m780unecJIrwbNWu5dRpSQ$mYsAsNNeDfxp8ypsVNubHqKiq86xP3H1ZhpiDuK91LQ" #123456
     }
 }
 
@@ -69,4 +70,17 @@ def register(user: UserDB):
     else:
         raise HTTPException(status_code= 409, detail="User alredy exists") 
 
-#async def login(form: OAuth2PasswordRequestForm = Depends()):
+@router.post("/login")
+async def login(form: OAuth2PasswordRequestForm = Depends()):
+    user_db = users_db.get(form.username)
+    if user_db:
+        #Si el usuario existe, comprobamos la contraseña
+        if (password_hash.verify(form.password, (users_db[user_db])["password"])):
+            #Tomo la hora a la que expira
+            expire = datetime.now(datetime.timezone.utc) + timedelta(minutes = ACCESS_TOKEN_EXPIRE_MINUTES)
+            #parámetro para crear el token
+            access_token = {"sub" : user_db, "exp": expire}
+            # Generamos el token de inicio de sesion
+            token = jwt.encode(access_token, SECRET_KEY, algorithm=ALGORITHM)
+            return {"access_token": token, "token_type": "bearer"}
+    raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
