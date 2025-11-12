@@ -1,5 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
+from .auth_users import auth_user
 
 from .asignaturas import buscar_asignatura_id_profesor
 
@@ -61,7 +63,7 @@ def get_asignaturas(id: int):
     raise HTTPException(status_code=404, detail="No existe el profesor")
 
 @router.post("/", status_code=201, response_model= Profesor)
-def post_profesor(profesor: Profesor):
+def post_profesor(profesor: Profesor, authorized = Depends(auth_user)):
     profesor.id = next_id()
     profesores_list.append(profesor)
     return profesor

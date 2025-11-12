@@ -44,20 +44,21 @@ users_db = {
         "disabled": False,
         "password": "123456"
     },
-    "paquito": {
-        "username": "paquito",
-        "full_name": "Paco Pérez",
-        "email": "paco.perez@iesnervion.es",
-        "disabled": True,
-        "password": "1234"
-    },
     "IvanCarrascosa": {
     "username": "IvanCarrascosa",
     "full_name": "Yoops",
     "email": "ivan.carrascosa@iesnervion.es",
     "disabled": False,
-    "password": "$argon2id$v=19$m=65536,t=3,p=4$m780unecJIrwbNWu5dRpSQ$mYsAsNNeDfxp8ypsVNubHqKiq86xP3H1ZhpiDuK91LQ" #123456
+    "password": '$argon2id$v=19$m=65536,t=3,p=4$m780unecJIrwbNWu5dRpSQ$mYsAsNNeDfxp8ypsVNubHqKiq86xP3H1ZhpiDuK91LQ' #123456
+    },
+    "paco": {
+    "username": "paco",
+    "full_name": "Paco Pérez",
+    "email": "paco.perez@iesnervion.es",
+    "disabled": True,
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$Irexx4mIfPMHW8zaurYMKA$0Zitp7RHggBol98ckiG7Pj4lMe6Tj2OTpAgwJPTifzY" #1234
     }
+    
 }
 
 @router.post("/register", status_code = 201)
@@ -65,7 +66,7 @@ def register(user: UserDB):
     if user.username not in users_db:
         hashed_password = password_hash.hash(user.password)
         user.password = hashed_password
-        users_db[user.username] = user
+        users_db[user.username] = user.model_dump()
         return user
     else:
         raise HTTPException(status_code= 409, detail="User alredy exists") 
@@ -74,13 +75,36 @@ def register(user: UserDB):
 async def login(form: OAuth2PasswordRequestForm = Depends()):
     user_db = users_db.get(form.username)
     if user_db:
+        user = UserDB(**user_db)
+        try:
         #Si el usuario existe, comprobamos la contraseña
-        if (password_hash.verify(form.password, (users_db[user_db])["password"])):
-            #Tomo la hora a la que expira
-            expire = datetime.now(datetime.timezone.utc) + timedelta(minutes = ACCESS_TOKEN_EXPIRE_MINUTES)
-            #parámetro para crear el token
-            access_token = {"sub" : user_db, "exp": expire}
-            # Generamos el token de inicio de sesion
-            token = jwt.encode(access_token, SECRET_KEY, algorithm=ALGORITHM)
-            return {"access_token": token, "token_type": "bearer"}
+            if (password_hash.verify(form.password, user.password)):
+                #Tomo la hora a la que expira
+                expire = datetime.now(timezone.utc) + timedelta(minutes = ACCESS_TOKEN_EXPIRE_MINUTES)
+                #parámetro para crear el token
+                access_token = {"sub" : user.username, "exp": expire}
+                # Generamos el token de inicio de sesion
+                token = jwt.encode(access_token, SECRET_KEY, algorithm=ALGORITHM)
+                return {"access_token": token, "token_type": "bearer"}
+        except:
+            raise HTTPException(status_code=400, detail="Error en la autenticacion")
     raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+
+async def auth_user(token: str = Depends(oauth2)):
+    try: 
+        # Pongo get sub porque es donde almaceno el nombre del usuario
+        username = jwt.decode(token, SECRET_KEY, algorithm= ALGORITHM).get("sub") #Aquí almaceno el usuario que hace el login
+        if username is None:
+            raise HTTPException(status_code=401,
+                                detail="Credenciales de autenticación inválidas",
+                                headers={"WWW-Authenticate" : "Bearer"})
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401,
+                                detail="Credenciales de autenticación inválidas",
+                                headers={"WWW-Authenticate" : "Bearer"})
+    user = User(**users_db[username])
+
+    if user.disabled:
+        raise HTTPException(status_code=400, detail="Usuario inactivo")
+    return user
+
