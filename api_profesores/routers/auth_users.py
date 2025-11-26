@@ -84,7 +84,7 @@ async def login(form: OAuth2PasswordRequestForm = Depends()):
                 #parámetro para crear el token
                 access_token = {"sub" : user.username, "exp": expire}
                 # Generamos el token de inicio de sesion
-                token = jwt.encode(access_token, SECRET_KEY, algorithm=ALGORITHM)
+                token = jwt.encode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
                 return {"access_token": token, "token_type": "bearer"}
         except:
             raise HTTPException(status_code=400, detail="Error en la autenticacion")
@@ -93,7 +93,7 @@ async def login(form: OAuth2PasswordRequestForm = Depends()):
 async def auth_user(token: str = Depends(oauth2)):
     try: 
         # Pongo get sub porque es donde almaceno el nombre del usuario
-        username = jwt.decode(token, SECRET_KEY, algorithm= ALGORITHM).get("sub") #Aquí almaceno el usuario que hace el login
+        username = jwt.decode(token, SECRET_KEY, algorithms= [ALGORITHM]).get("sub") #Aquí almaceno el usuario que hace el login
         if username is None:
             raise HTTPException(status_code=401,
                                 detail="Credenciales de autenticación inválidas",
