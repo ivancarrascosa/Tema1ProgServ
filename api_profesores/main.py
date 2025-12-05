@@ -1,4 +1,5 @@
 from fastapi.staticfiles import StaticFiles
+from routers import profesores_db
 from routers import auth_users
 from routers import asignaturas 
 from routers import profesores
@@ -10,6 +11,7 @@ app = FastAPI()
 app.include_router(asignaturas.router)
 app.include_router(profesores.router)
 app.include_router(auth_users.router)
+app.include_router(profesores_db.router)
 app.mount("/static", StaticFiles(directory="static"),name="static")
 
 @app.get("/")
