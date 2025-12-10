@@ -6,6 +6,6 @@ class Profesor(BaseModel):
     DNI: str
     nombre: str
     apellidos: str
-    telefono: int
+    telefono: str
     direccion: str
     cuentaBancaria: str
