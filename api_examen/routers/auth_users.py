@@ -1,0 +1,110 @@
+from datetime import *
+from fastapi import APIRouter, Depends, HTTPException
+import fastapi
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel
+#Libreria JWT
+import jwt
+#Para trabajar las excepciones de los tokens
+from jwt.exceptions import InvalidTokenError
+#Libreria para aplicar el hash a la contraseña
+from pwdlib import PasswordHash
+
+router = fastapi.APIRouter(prefix="/auth", tags=["auth"])
+oauth2 = OAuth2PasswordBearer(tokenUrl = "login")
+
+#Definimos el algoritmo de cifrado
+ALGORITHM = "HS256"
+
+#Duracion del token 
+ACCESS_TOKEN_EXPIRE_MINUTES = 5
+
+#Clave que se utilizará como semilla para generar el token 
+#openssl rand -hex 32 en git bash 
+SECRET_KEY = "75bd9345ec6f051a3abae248c0fdb871247e49df76edea657e319d58f6bdc75c"
+
+
+#Objeto que se utilizará para el cálculo del hash y la verificación
+#de contraseñas
+password_hash = PasswordHash.recommended()
+class User(BaseModel):
+    username: str
+    full_name: str
+    email: str
+    disabled: bool
+
+class UserDB(User):
+    password: str
+
+users_db = {
+    "elenarg": {
+        "username": "elenarg",
+        "full_name": "Elena Rivero",
+        "email": "elena.rivero@iesnervion.es",
+        "disabled": False,
+        "password": "123456"
+    },
+    "IvanCarrascosa": {
+    "username": "IvanCarrascosa",
+    "full_name": "Yoops",
+    "email": "ivan.carrascosa@iesnervion.es",
+    "disabled": False,
+    "password": '$argon2id$v=19$m=65536,t=3,p=4$m780unecJIrwbNWu5dRpSQ$mYsAsNNeDfxp8ypsVNubHqKiq86xP3H1ZhpiDuK91LQ' #123456
+    },
+    "paco": {
+    "username": "paco",
+    "full_name": "Paco Pérez",
+    "email": "paco.perez@iesnervion.es",
+    "disabled": True,
+    "password": "$argon2id$v=19$m=65536,t=3,p=4$Irexx4mIfPMHW8zaurYMKA$0Zitp7RHggBol98ckiG7Pj4lMe6Tj2OTpAgwJPTifzY" #1234
+    }
+    
+}
+
+@router.post("/register", status_code = 201)
+def register(user: UserDB):
+    if user.username not in users_db:
+        hashed_password = password_hash.hash(user.password)
+        user.password = hashed_password
+        users_db[user.username] = user.model_dump()
+        return user
+    else:
+        raise HTTPException(status_code= 409, detail="User alredy exists") 
+
+@router.post("/login")
+async def login(form: OAuth2PasswordRequestForm = Depends()):
+    user_db = users_db.get(form.username)
+    if user_db:
+        user = UserDB(**user_db)
+        try:
+        #Si el usuario existe, comprobamos la contraseña
+            if (password_hash.verify(form.password, user.password)):
+                #Tomo la hora a la que expira
+                expire = datetime.now(timezone.utc) + timedelta(minutes = ACCESS_TOKEN_EXPIRE_MINUTES)
+                #parámetro para crear el token
+                access_token = {"sub" : user.username, "exp": expire}
+                # Generamos el token de inicio de sesion
+                token = jwt.encode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
+                return {"access_token": token, "token_type": "bearer"}
+        except:
+            raise HTTPException(status_code=400, detail="Error en la autenticacion")
+    raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+
+async def auth_user(token: str = Depends(oauth2)):
+    try: 
+        # Pongo get sub porque es donde almaceno el nombre del usuario
+        username = jwt.decode(token, SECRET_KEY, algorithms= [ALGORITHM]).get("sub") #Aquí almaceno el usuario que hace el login
+        if username is None:
+            raise HTTPException(status_code=401,
+                                detail="Credenciales de autenticación inválidas",
+                                headers={"WWW-Authenticate" : "Bearer"})
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401,
+                                detail="Credenciales de autenticación inválidas",
+                                headers={"WWW-Authenticate" : "Bearer"})
+    user = User(**users_db[username])
+
+    if user.disabled:
+        raise HTTPException(status_code=400, detail="Usuario inactivo")
+    return user
+
